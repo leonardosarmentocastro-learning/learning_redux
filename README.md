@@ -13,19 +13,22 @@ Imagine your app’s state is described as a plain object. For example, the stat
 }
 ```
 
-To change "state", you need to "dispatch" an "action".
+To change `state`, you need to `dispatch` an `action`.
 An "action" is a plain javascript object that describes what happened:
+
 ```javascript
   { type: 'ADD_TODO', text: 'Go to swimming pool' }
   { type: 'TOGGLE_TODO', index: 1 }
   { type: 'SET_VISIBILITY_FILTER', filter: 'SHOW_ALL' }
 ```
 
-Why?
+**Why?**
+
 Because enforcing that every change is described as an action lets us have a clear understanding of what’s going on in the app.
 If something changed, we know why it changed.
 
 To tie "actions" and "state" together, we need to write a function called a "reducer":
+
 ```javascript
 // "app/reducers/visibilityFilter.js"
 function reducer(visibilityFilter = 'SHOW_ALL', action) {
@@ -72,7 +75,8 @@ export { default as visibilityFilter } from 'app/reducers/visibilityFilter';
 export { default as todos } from 'app/reducers/todos';
 ```
 
-And then we write another reducer that manages the completed of our app by calling those two reducers for the corresponding state keys:
+And then we write a "root reducer" that manages the entire state of our app by calling those two reducers for the corresponding state keys:
+
 ```javascript
 import { reducers } from 'app/reducers';
 
@@ -92,20 +96,19 @@ And this is the main idea behind Redux: that you describe how your state is upda
 
 ### Single source of truth
 
-The state of your whole application is stored in a object tree within a single store.
+The state of your whole application is stored in single a object tree called `store`.
 
-> **A store holds the whole state tree of your application.**
-> A store is not a class. It's just an object with a few methods on it.
-> To create it, pass your root reducing function to `createStore`.
+>  **A store is not a class. It's just an object with a few methods on it.**
+> To create it, pass your "rootReducer" function to `createStore`.
 
-* **_Store Methods_**
+* **Store Methods**
 
 1. `getState()`
 2. `dispatch(action)​`
 3. `subscribe(listener)​`
 4. `replaceReducer(nextReducer)​`
 
-**​`getState()​`**
+_**`getState()​`**_
 
 Returns the current state tree of your application.
 
@@ -127,22 +130,70 @@ console.log(store.getState());
 // }
 ```
 
-**`dispatch(action)​`**
+_**`dispatch(action)​`**_
 
 Dispatches an action. This is the only way to trigger a state change.
-The store's reducing function will be called with the current getState() result and the given action synchronously.
+The store's "rootReducer" function will be called with the current `getState()`'s result and the given action synchronously.
 
-**`​subscribe(listener)​`**
+_**`​subscribe(listener)​`**_
 
 Register a function to be called on state changes (whenever a `dispatch` is fired).
-> Usually used to triggers React `render()` method.
 
-**`​replaceReducer(nextReducer)​`**
+_Usually used to triggers React `render()` method._
+
+_**`​replaceReducer(nextReducer)​`**_
 
 Replaces the reducer currently used by the store to calculate the state.
-> It's an advanced API primaraly created to implement code splitting and hot reloading.
+
+_It's an advanced API primaraly created to implement code splitting and hot reloading._
 
 
 ### State is read-only
 
 The only way to change state is by emitting an `action`, an object that describes what happened.
+
+This ensures that neither network calls or any view's logic will ever write directly to the state.
+Instead, they express an intent to transform the state.
+
+Since actions are plain objects, they can be serialized, stored and replayed for debugging and testing purposes.
+
+```js
+store.dispatch({
+  type: 'COMPLETE_TODO',
+  index: 1,
+});
+
+store.dispatch({
+  type: 'SET_VISIBILITY_FILTER',
+  filter: 'SHOW_COMPLETED',
+});
+```
+
+### Changes are made with pure functions
+
+To specify how the state tree is transformed by actions, you write pure `reducers`.
+
+Reducers are just pure functions that takes the previous `state`, an `action` and return the next state.
+And the most important: **don't mutate the "state" object passed to the reducer**, return a new state object instead.
+
+```js
+function visibilityFilter(state = 'SHOW_ALL', action) {
+  switch (action.type) {
+    case 'SET_VISIBLITY_FILTER':
+      return action.filter;
+    default:
+      return state;
+  }
+}
+
+function todos(state = [], action) {
+  // ...
+}
+
+import { combineReducers, createStore } from 'redux';
+const rootReducer = combinaReducers({ visibilityFilter, todos });
+const store = createStore(rootReducer);
+```
+
+Just remember that the reducer must be pure. Given the same arguments, it should calculate the next state and return it.
+_No surprises. No side effects. No API calls. No mutations. Just a calculation._
